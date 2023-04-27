@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>PDF password remover</title>
+  </head>
+  <body>
+    <h1>PDF password remover</h1>
+    <p>
+      Select a password-protected PDF file to remove the password from:
+    </p>
+    <input type="file" id="pdfFileInput" accept=".pdf">
+    <br>
+    <p>
+      Enter the password for the PDF file:
+      <input type="text" id="pdfPasswordInput">
+    </p>
+    <button id="removePasswordButton">Remove password</button>
+    <script src="https://cdn.jsdelivr.net/npm/pdf-lib@1.16.0/dist/pdf-lib.min.js"></script>
+    <script>
+      const { PDFDocument } = PDFLib;
+      const pdfFileInput = document.getElementById('pdfFileInput');
+      const pdfPasswordInput = document.getElementById('pdfPasswordInput');
+      const removePasswordButton = document.getElementById('removePasswordButton');
+
+      removePasswordButton.addEventListener('click', async () => {
+        const pdfFile = pdfFileInput.files[0];
+        const pdfBytes = await readFileAsByteArray(pdfFile);
+        const password = pdfPasswordInput.value;
+        const pdfDoc = await PDFDocument.load(pdfBytes, { password });
+
+        // Create a new PDF document without a password
+        const newPdfDoc = await PDFDocument.create();
+        const copiedPages = await newPdfDoc.copyPages(pdfDoc, pdfDoc.getPageIndices());
+        copiedPages.forEach((page) => newPdfDoc.addPage(page));
+
+        const newPdfBytes = await newPdfDoc.save();
+        downloadPdfFile(newPdfBytes, `${pdfFile.name.replace('.pdf', '')}_unlocked.pdf`);
+      });
+
+      function readFileAsByteArray(file) {
+        return new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = (event) => {
+            const arrayBuffer = event.target.result;
+            const byteArray = new Uint8Array(arrayBuffer);
+            resolve(byteArray);
+          };
+          reader.readAsArrayBuffer(file);
+        });
+      }
+
+      function downloadPdfFile(pdfBytes, fileName) {
+        const blob = new Blob([pdfBytes], { type: 'application/pdf' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = fileName;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      }
+    </script>
+  </body>
+</html>
